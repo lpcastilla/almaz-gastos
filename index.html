@@ -277,16 +277,21 @@ tbody td{padding:14px;font-size:13.5px;color:var(--tx)}
               </div>
               <div class="f-group full">
                 <div class="f-lbl"><i class="ti ti-paperclip"></i>Soportes (opcionales)</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
                   <div class="upload-mini" id="up-rq" onclick="document.getElementById('file-rq').click()">
                     <i class="ti ti-file-invoice"></i>
                     <span id="up-rq-text">Adjuntar RQ</span>
-                    <input type="file" id="file-rq" style="display:none" onchange="handleFileSelect(event,'rq')"/>
+                    <input type="file" id="file-rq" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(event,'rq')"/>
                   </div>
                   <div class="upload-mini" id="up-analisis" onclick="document.getElementById('file-analisis').click()">
                     <i class="ti ti-file-analytics"></i>
                     <span id="up-analisis-text">Adjuntar Análisis de Precio</span>
-                    <input type="file" id="file-analisis" style="display:none" onchange="handleFileSelect(event,'analisis')"/>
+                    <input type="file" id="file-analisis" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(event,'analisis')"/>
+                  </div>
+                  <div class="upload-mini" id="up-soporte" onclick="document.getElementById('file-soporte').click()">
+                    <i class="ti ti-receipt-2"></i>
+                    <span id="up-soporte-text">Adjuntar Soporte de Pago</span>
+                    <input type="file" id="file-soporte" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(event,'soporte')"/>
                   </div>
                 </div>
               </div>
@@ -421,16 +426,21 @@ tbody td{padding:14px;font-size:13.5px;color:var(--tx)}
       </div>
       <div class="f-group full">
         <div class="f-lbl">Soportes</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
           <div class="upload-mini" id="m-up-rq" onclick="document.getElementById('m-file-rq').click()">
             <i class="ti ti-file-invoice"></i>
             <span id="m-up-rq-text">Adjuntar / reemplazar RQ</span>
-            <input type="file" id="m-file-rq" style="display:none" onchange="handleFileSelect(event,'m-rq')"/>
+            <input type="file" id="m-file-rq" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(event,'m-rq')"/>
           </div>
           <div class="upload-mini" id="m-up-analisis" onclick="document.getElementById('m-file-analisis').click()">
             <i class="ti ti-file-analytics"></i>
             <span id="m-up-analisis-text">Adjuntar / reemplazar Análisis</span>
-            <input type="file" id="m-file-analisis" style="display:none" onchange="handleFileSelect(event,'m-analisis')"/>
+            <input type="file" id="m-file-analisis" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(event,'m-analisis')"/>
+          </div>
+          <div class="upload-mini" id="m-up-soporte" onclick="document.getElementById('m-file-soporte').click()">
+            <i class="ti ti-receipt-2"></i>
+            <span id="m-up-soporte-text">Adjuntar / reemplazar Soporte de Pago</span>
+            <input type="file" id="m-file-soporte" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(event,'m-soporte')"/>
           </div>
         </div>
         <div id="m-links-existentes" style="margin-top:8px;font-size:12px"></div>
@@ -471,7 +481,7 @@ let adminPassword = '';
 let gastosCache = [];
 let editingRowIndex = null;
 let deleteTarget = null;
-let pendingFiles = { rq: null, analisis: null, 'm-rq': null, 'm-analisis': null };
+let pendingFiles = { rq: null, analisis: null, soporte: null, 'm-rq': null, 'm-analisis': null, 'm-soporte': null };
 
 async function api(payload){
   const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ ...payload, password: adminPassword }) });
@@ -552,14 +562,16 @@ function handleFileSelect(event, slot){
 }
 
 function resetFileInputs(){
-  pendingFiles = { rq: null, analisis: null, 'm-rq': null, 'm-analisis': null };
-  ['up-rq','up-analisis'].forEach(id=>{
+  pendingFiles = { rq: null, analisis: null, soporte: null, 'm-rq': null, 'm-analisis': null, 'm-soporte': null };
+  ['up-rq','up-analisis','up-soporte'].forEach(id=>{
     document.getElementById(id).classList.remove('has-file');
   });
   document.getElementById('up-rq-text').textContent = 'Adjuntar RQ';
   document.getElementById('up-analisis-text').textContent = 'Adjuntar Análisis de Precio';
+  document.getElementById('up-soporte-text').textContent = 'Adjuntar Soporte de Pago';
   document.getElementById('file-rq').value = '';
   document.getElementById('file-analisis').value = '';
+  document.getElementById('file-soporte').value = '';
 }
 
 function loadSub(){
@@ -601,7 +613,12 @@ async function guardarGasto(){
       payload.analisisFileName = pendingFiles.analisis.name;
       payload.analisisMimeType = pendingFiles.analisis.type || 'application/octet-stream';
     }
-    if (pendingFiles.rq || pendingFiles.analisis){
+    if (pendingFiles.soporte){
+      payload.soportePagoFileBase64 = await readFileAsBase64(pendingFiles.soporte);
+      payload.soportePagoFileName = pendingFiles.soporte.name;
+      payload.soportePagoMimeType = pendingFiles.soporte.type || 'application/octet-stream';
+    }
+    if (pendingFiles.rq || pendingFiles.analisis || pendingFiles.soporte){
       btn.innerHTML = '<div class="spinner"></div> Subiendo soportes...';
     }
     const r = await api(payload);
@@ -683,7 +700,7 @@ async function renderHistorial(){
       <td class="td-cat">${String(g.cat).replace(/_/g,' ')}</td>
       <td class="td-cat">${g.sub}</td>
       <td>${g.desc}</td>
-      <td>${g.linkRQ ? `<a href="${g.linkRQ}" target="_blank" class="sup-icon" title="Ver RQ"><i class="ti ti-file-invoice"></i></a>` : '<span class="sup-icon empty"><i class="ti ti-file-invoice"></i></span>'} ${g.linkAnalisis ? `<a href="${g.linkAnalisis}" target="_blank" class="sup-icon" title="Ver análisis de precio"><i class="ti ti-file-analytics"></i></a>` : '<span class="sup-icon empty"><i class="ti ti-file-analytics"></i></span>'}</td>
+      <td>${g.linkRQ ? `<a href="${g.linkRQ}" target="_blank" class="sup-icon" title="Ver RQ"><i class="ti ti-file-invoice"></i></a>` : '<span class="sup-icon empty"><i class="ti ti-file-invoice"></i></span>'} ${g.linkAnalisis ? `<a href="${g.linkAnalisis}" target="_blank" class="sup-icon" title="Ver análisis de precio"><i class="ti ti-file-analytics"></i></a>` : '<span class="sup-icon empty"><i class="ti ti-file-analytics"></i></span>'} ${g.linkSoportePago ? `<a href="${g.linkSoportePago}" target="_blank" class="sup-icon" title="Ver soporte de pago"><i class="ti ti-receipt-2"></i></a>` : '<span class="sup-icon empty"><i class="ti ti-receipt-2"></i></span>'}</td>
       <td class="td-amt" style="text-align:right">$${Number(g.monto).toLocaleString('es-VE',{minimumFractionDigits:2})}</td>
       <td>
         <div class="td-actions">
@@ -765,17 +782,21 @@ function openEdit(rowIndex){
   document.getElementById('m-monto').value = g.monto;
 
   // reset modal upload boxes
-  pendingFiles['m-rq'] = null; pendingFiles['m-analisis'] = null;
+  pendingFiles['m-rq'] = null; pendingFiles['m-analisis'] = null; pendingFiles['m-soporte'] = null;
   document.getElementById('m-up-rq').classList.remove('has-file');
   document.getElementById('m-up-analisis').classList.remove('has-file');
+  document.getElementById('m-up-soporte').classList.remove('has-file');
   document.getElementById('m-up-rq-text').textContent = 'Adjuntar / reemplazar RQ';
   document.getElementById('m-up-analisis-text').textContent = 'Adjuntar / reemplazar Análisis';
+  document.getElementById('m-up-soporte-text').textContent = 'Adjuntar / reemplazar Soporte de Pago';
   document.getElementById('m-file-rq').value = '';
   document.getElementById('m-file-analisis').value = '';
+  document.getElementById('m-file-soporte').value = '';
 
   const linksHtml = [];
   if (g.linkRQ) linksHtml.push(`<a href="${g.linkRQ}" target="_blank" style="color:var(--blue)">Ver RQ actual</a>`);
   if (g.linkAnalisis) linksHtml.push(`<a href="${g.linkAnalisis}" target="_blank" style="color:var(--blue);margin-left:14px">Ver análisis actual</a>`);
+  if (g.linkSoportePago) linksHtml.push(`<a href="${g.linkSoportePago}" target="_blank" style="color:var(--blue);margin-left:14px">Ver soporte de pago actual</a>`);
   document.getElementById('m-links-existentes').innerHTML = linksHtml.length ? linksHtml.join('') : '<span style="color:var(--txd)">Sin soportes adjuntos todavía</span>';
 
   document.getElementById('modal-overlay').classList.add('open');
@@ -800,6 +821,11 @@ async function saveEdit(){
       payload.analisisFileBase64 = await readFileAsBase64(pendingFiles['m-analisis']);
       payload.analisisFileName = pendingFiles['m-analisis'].name;
       payload.analisisMimeType = pendingFiles['m-analisis'].type || 'application/octet-stream';
+    }
+    if (pendingFiles['m-soporte']){
+      payload.soportePagoFileBase64 = await readFileAsBase64(pendingFiles['m-soporte']);
+      payload.soportePagoFileName = pendingFiles['m-soporte'].name;
+      payload.soportePagoMimeType = pendingFiles['m-soporte'].type || 'application/octet-stream';
     }
     const r = await api(payload);
     if (r.ok){ gastosCache=[]; closeModal(); showToast('Registro actualizado'); renderHistorial(); }
@@ -830,8 +856,8 @@ async function doDelete(){
 async function exportCSV(){
   const data = await loadGastos();
   if (!data.length){ showToast('No hay datos para exportar', true); return; }
-  const rows = data.map(g=>`${g.cat},${g.sub},${String(g.fecha).slice(0,10)},"${String(g.desc).replace(/"/g,'""')}",${g.monto},${g.linkRQ||''},${g.linkAnalisis||''}`);
-  const blob = new Blob(['\uFEFF'+'Categoria,Subcategoria,Fecha,Descripcion,Importe,LinkRQ,LinkAnalisis\n'+rows.join('\n')], {type:'text/csv;charset=utf-8'});
+  const rows = data.map(g=>`${g.cat},${g.sub},${String(g.fecha).slice(0,10)},"${String(g.desc).replace(/"/g,'""')}",${g.monto},${g.linkRQ||''},${g.linkAnalisis||''},${g.linkSoportePago||''}`);
+  const blob = new Blob(['\uFEFF'+'Categoria,Subcategoria,Fecha,Descripcion,Importe,LinkRQ,LinkAnalisis,LinkSoportePago\n'+rows.join('\n')], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download='almaz_gastos_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
   URL.revokeObjectURL(url);
